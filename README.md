@@ -1,223 +1,40 @@
-# Project 5 — AI Agent Deployment on AWS EC2
+# AI Agent Deployment on AWS EC2
 
-> **Data/AI/MLOps Engineering Portfolio**  
-> Stack: AWS EC2 · Docker · FastAPI · PostgreSQL · Anthropic API
+## 🛠️ Technologies
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Anthropic](https://img.shields.io/badge/Anthropic_API-191919?style=for-the-badge&logo=anthropic&logoColor=white)
 
----
+## ✨ Features
+- Deploy a multi-container FastAPI + PostgreSQL app to AWS EC2 with Docker Compose
+- IAM user configured with a least-privilege custom policy (EC2 + S3 read only)
+- Public HTTP endpoint on port 8000 served from Amazon Linux 2023
+- SSH key pair access with a dedicated security group (`ai-agent-sg`)
+- Secure environment variable handling — no secrets committed to Git
 
-## Overview
+## 🎯 Uses
+Takes the AI agent from local development to a real production cloud environment on AWS EC2. Covers the full deployment lifecycle: EC2 provisioning, Docker Compose in production, IAM configuration, and public API exposure. Built as project #5 in a Data/AI/MLOps engineering portfolio.
 
-This project takes the AI Agent built in [Project 2](../project-2-ai-agent) and deploys it to a production cloud environment on AWS EC2. The agent is publicly accessible via HTTP and runs fully containerized using Docker Compose — covering the full lifecycle from local development to cloud deployment.
+## 🔧 Process
+Provisioned an EC2 `t3.micro` instance on Amazon Linux 2023, installed Docker and Docker Compose, configured a security group for ports 22 and 8000, set up an IAM deploy user with a minimal policy, and ran the multi-container app with Docker Compose. All sensitive values (API keys, DB credentials) are passed via a `.env` file that is never committed to Git.
 
-**What I learned:**
-- How to provision and configure an EC2 instance from scratch (Amazon Linux 2023)
-- How to run a multi-container application in production using Docker Compose
-- How to manage secrets securely (environment variables, `.gitignore`, no hardcoded keys)
-- How to apply the least privilege principle with IAM users and custom policies
-- How to expose a FastAPI service to the internet via security groups and port configuration
+## 💡 Learnings
+- Running Docker Compose on EC2 requires installing Docker Buildx separately on Amazon Linux 2023 — it is not bundled by default
+- IAM least-privilege means creating a dedicated deploy user with only the permissions it needs; the admin account is never used for automation
+- Security groups are the first line of defense — only open the ports the app actually uses
 
----
-
-## Architecture
-
-```mermaid
-graph LR
-    U["👤 User"] -->|"HTTP Request :8000"| EC2
-
-    subgraph EC2["🖥️ EC2 t3.micro — AWS us-east-1"]
-        APP["📦 ai-agent-app\nFastAPI + Anthropic SDK"]
-        DB["🐘 postgres\nPostgreSQL 15"]
-        APP -->|"SQL queries"| DB
-    end
-
-    APP -->|"HTTPS"| ANT["🤖 Anthropic API\nClaude Sonnet"]
-    ANT -->|"LLM Response"| APP
-    EC2 -->|"JSON Response"| U
-```
-
----
-
-## Infrastructure
-
-| Resource | Details |
-|---|---|
-| **Instance** | EC2 `t3.micro` — Amazon Linux 2023 |
-| **Region** | `us-east-1` |
-| **Public IP** | `98.81.193.111` |
-| **Ports open** | `22` (SSH), `8000` (API) |
-| **Storage** | EBS 8GB (default) |
-| **Key pair** | `ai-agent-key.pem` |
-| **Security group** | `ai-agent-sg` |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Containerization | Docker + Docker Compose |
-| API | FastAPI |
-| Database | PostgreSQL 15 |
-| LLM Integration | Anthropic SDK (Claude Sonnet) |
-| Host OS | Amazon Linux 2023 |
-
----
-
-## Project Structure
-
-```
-project-5-aws-deploy/
-├── app/
-│   ├── main.py           # FastAPI entrypoint
-│   ├── agent.py          # AI Agent logic
-│   └── tools/            # Tool definitions
-├── docker-compose.yml
-├── Dockerfile
-├── .env.example          # Template — never commit .env
-└── README.md
-```
-
----
-
-## Local Setup
-
-### Prerequisites
-
-- Docker + Docker Compose
-- Anthropic API key
-
-### Steps
+## ▶️ Running the project
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/project-5-aws-deploy.git
-cd project-5-aws-deploy
-
-# 2. Create your .env file
+# Local setup
 cp .env.example .env
-# Fill in your values
-
-# 3. Run
 docker-compose up -d
 
-# 4. Test
-curl http://localhost:8000/docs
-```
-
-### Environment Variables
-
-```env
-POSTGRES_USER=your_user
-POSTGRES_PASSWORD=your_password
-POSTGRES_HOST=postgres
-POSTGRES_DB=ai_agent_db
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-> ⚠️ Never commit `.env` to Git. It's already listed in `.gitignore`.
-
----
-
-## AWS Deployment
-
-### 1. EC2 Setup
-
-```bash
-# Update packages
-sudo dnf update -y
-
-# Install Docker
-sudo dnf install docker -y
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker ec2-user
-
-# Install Git
-sudo dnf install git -y
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
-  -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Install Docker Buildx (required for build)
-mkdir -p ~/.docker/cli-plugins
-curl -Lo ~/.docker/cli-plugins/docker-buildx \
-  https://github.com/docker/buildx/releases/download/v0.17.0/buildx-v0.17.0.linux-amd64
-chmod +x ~/.docker/cli-plugins/docker-buildx
-sudo mkdir -p /usr/local/lib/docker/cli-plugins
-sudo cp ~/.docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/
-```
-
-### 2. Deploy
-
-```bash
-# Clone and configure
-git clone https://github.com/your-username/project-5-aws-deploy.git
-cd project-5-aws-deploy
-nano .env  # fill in values
-
-# Run
+# AWS deployment — SSH into your EC2 instance, then:
+git clone https://github.com/ElioUcan/AWS-deployment-on-EC2.git
+cd AWS-deployment-on-EC2
+cp .env.example .env  # fill in values
 docker-compose up -d
-
-# Verify
-docker-compose ps
 ```
-
-### 3. SSH Access
-
-```bash
-ssh -i ~/.ssh/ai-agent-key.pem -t "TERM=xterm bash" ec2-user@98.81.193.111
-```
-
----
-
-## API Reference
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/docs` | Swagger UI |
-| `GET` | `/health` | Health check |
-| `POST` | `/chat` | Send message to AI Agent |
-
-### Example Request
-
-```bash
-curl -X POST http://98.81.193.111:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What is the current Bitcoin price?"}'
-```
-
----
-
-## IAM Configuration
-
-| User | Policy | Purpose |
-|---|---|---|
-| `admin` | `AdministratorAccess` | Account management |
-| `ai-agent-deploy` | Custom (EC2, S3 read) | Deployment only |
-
-Follows the **least privilege** principle — the deploy user has only the permissions it needs, nothing more.
-
----
-
-## Skills Demonstrated
-
-- ✅ Cloud deployment on AWS EC2 (Amazon Linux 2023)
-- ✅ Docker Compose orchestration in a production environment
-- ✅ Security group and IAM configuration
-- ✅ SSH key pair access management
-- ✅ Secure environment variable handling (no secrets in Git)
-- ✅ REST API exposure and architecture documentation
-
----
-
-## Related Projects
-
-- [Project 1 — ETL Pipeline with Airflow](../project-1-etl-airflow)
-- [Project 2 — AI Agent with Anthropic API](../project-2-ai-agent)
-- [Project 6 — Infrastructure as Code with Terraform](../project-6-terraform) *(next)*
-
----
-
-*Part of a progressive Data/AI/MLOps Engineering portfolio.*
